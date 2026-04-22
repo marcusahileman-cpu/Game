@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Industry Idle</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0b1522;color:#b0bcd0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;font-size:12px}
+#game{display:flex;flex-direction:column;height:100vh}
+
+/* ── TICKER ── */
+#ticker{
+  height:34px;display:flex;align-items:center;
+  background:#080e1a;border-bottom:1px solid #162030;
+  overflow:hidden;flex-shrink:0;
+}
+.tmain{
+  display:flex;align-items:center;gap:9px;padding:0 12px;
+  border-right:1px solid #162030;flex-shrink:0;white-space:nowrap;
+}
+.tmoney{color:#f0d040;font-weight:700;font-size:13px;font-family:monospace}
+.tpower{font-family:monospace;font-size:12px;font-weight:700}
+#tscroll{display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+#tscroll::-webkit-scrollbar{display:none}
+.tres{
+  display:flex;align-items:center;gap:4px;padding:0 10px;
+  border-right:1px solid #162030;white-space:nowrap;flex-shrink:0;
+}
+.tabr{font-weight:700;font-size:10px}
+.tamt{color:#c8d4e0;font-family:monospace;font-size:11px}
+.trate{font-family:monospace;font-size:10px}
+.rpos{color:#30cc60}.rneg{color:#f04040}
+
+/* ── MAIN ── */
+#main{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ── MAP ── */
+#cwrap{flex:1;position:relative;overflow:hidden;background:#0b1522;cursor:crosshair;user-select:none}
+#cv{display:block}
+#ptip{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  background:rgba(12,38,8,.94);border:1px solid #387012;
+  border-radius:20px;padding:6px 18px;color:#78cc28;
+  font-size:12px;pointer-events:none;display:none;white-space:nowrap;
+  box-shadow:0 2px 14px rgba(0,0,0,.6)
+}
+
+/* ── RIGHT PANEL ── */
+#panel{width:240px;background:#0c1828;border-left:1px solid #162030;display:flex;flex-direction:column;flex-shrink:0}
+#rtabs{display:flex;border-bottom:1px solid #162030;flex-shrink:0}
+.rtab{
+  flex:1;background:none;border:none;padding:9px 2px;
+  color:#30485e;cursor:pointer;font-size:10px;letter-spacing:1px;
+  border-bottom:2px solid transparent;transition:color .15s
+}
+.rtab.on{color:#70a8d0;border-bottom-color:#70a8d0}
+.rtab:not(.on):hover{color:#50789a}
+#rbody{flex:1;overflow-y:auto}
+
+/* Panel helpers */
+.ph{font-size:8px;color:#20364a;letter-spacing:3px;padding:6px 10px 3px;font-weight:700}
+.th{font-size:8px;color:#182838;letter-spacing:2px;padding:5px 10px 2px}
+
+/* Build items */
+.bitem{
+  margin:2px 6px;padding:7px 8px;border-radius:4px;
+  cursor:pointer;border:1px solid #162030;
+  transition:background .1s,border-color .1s
+}
+.bitem:not(.locked):hover{background:#182030;border-color:#243848}
+.bitem.active{border-color:#b89820;background:#1c1a06}
+.bitem.locked{opacity:.3;cursor:not-allowed}
+.bh{display:flex;align-items:center;gap:6px}
+.bico{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.bname{color:#a0b0c0;font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.block-ico{font-size:9px;color:#e83030}
+.bcost{font-size:10px;font-family:monospace;margin-top:2px}
+.bprod{font-size:9px;color:#283848;margin-top:1px}
+
+/* Selected info */
+.shdr{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid #162030}
+.sico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.sname{font-size:13px;font-weight:700;color:#b8cce0;flex:1}
+.scls{background:none;border:none;color:#304858;cursor:pointer;font-size:16px;line-height:1}
+.scls:hover{color:#80a8c0}
+.irow{display:flex;justify-content:space-between;padding:5px 10px;border-bottom:1px solid #0e1820;font-size:11px}
+.il{color:#38485a}.iv{font-family:monospace}
+.sbtn{display:block;margin:5px 8px;padding:8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;text-align:center;width:calc(100% - 16px)}
+.upgbtn{background:#0e2010;border:1px solid #204810;color:#58b038}
+.upgbtn:hover{background:#142a14}
+.dembtn{background:#200e0e;border:1px solid #481818;color:#b83838;margin-top:3px}
+.dembtn:hover{background:#2c1212}
+
+/* Market */
+.mrow{display:flex;align-items:center;gap:5px;padding:4px 8px}
+.mdot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.mname{flex:1;font-size:10px;color:#485060;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mamt{font-family:monospace;font-size:11px;min-width:36px;text-align:right;color:#808898}
+.mprc{font-size:10px;color:#c0a828;min-width:42px;text-align:right}
+.mbtn{background:#14182a;border:1px solid #222438;border-radius:3px;color:#707898;padding:2px 6px;cursor:pointer;font-size:9px}
+.mbtn:hover:not(:disabled){background:#1c2040}
+.mbtn:disabled{opacity:.3;cursor:default}
+.sellall{display:block;width:calc(100% - 16px);margin:8px;padding:8px;background:#121c08;border:1px solid #2c3e10;border-radius:4px;color:#88b020;font-size:12px;font-weight:700;cursor:pointer}
+.sellall:hover{background:#182610}
+
+/* Research */
+.rcard{margin:4px 6px;padding:9px;border-radius:4px;border:1px solid #162030}
+.rcard.done{border-color:#163828;background:#0a1c14}
+.rcard.locked{opacity:.35}
+.rcn{font-size:12px;font-weight:700;color:#a0b8c8}
+.rcd{font-size:10px;color:#283848;margin:3px 0 6px}
+.rdone{font-size:10px;color:#28a850}
+.rbtn{background:#0e1e0a;border:1px solid #243a12;border-radius:3px;color:#68a028;padding:4px 10px;cursor:pointer;font-size:11px}
+.rbtn:disabled{background:#121820;border-color:#1e2830;color:#384050;cursor:default}
+
+/* Log */
+.lentry{padding:3px 10px;font-size:10px;color:#405060;border-bottom:1px solid #0e1820}
+.lempty{padding:8px 10px;font-size:10px;color:#28384a}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:#080e1a}
+::-webkit-scrollbar-thumb{background:#1e3048;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#284060}
+</style>
+</head>
+<body>
+<div id="game">
+
+<!-- TICKER -->
+<div id="ticker">
+  <div class="tmain">
+    <span style="font-size:15px">🏭</span>
+    <span class="tmoney" id="tmoney">$1,000</span>
+    <span style="color:#38a0d8;font-size:13px">⚡</span>
+    <span class="tpower" id="tpower" style="color:#38a0d8">0/0 MW</span>
+  </div>
+  <div id="tscroll"></div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="cwrap">
+    <canvas id="cv"></canvas>
+    <div id="ptip">📌 Placing: <b id="pname"></b> — click highlighted tile · ESC cancel</div>
+  </div>
+  <div id="panel">
+    <div id="rtabs">
+      <button class="rtab on" onclick="setTab('build')" id="tb-build">BUILD</button>
+      <button class="rtab" onclick="setTab('market')" id="tb-market">MARKET</button>
+      <button class="rtab" onclick="setTab('research')" id="tb-research">RESEARCH</button>
+      <button class="rtab" onclick="setTab('log')" id="tb-log">LOG</button>
+    </div>
+    <div id="rbody">
+      <div id="p-build"></div>
+      <div id="p-market" style="display:none"></div>
+      <div id="p-research" style="display:none"></div>
+      <div id="p-log" style="display:none"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════ CONSTANTS
+const S3 = Math.sqrt(3);
+const HS   = 22;          // hex radius
+const GC   = 30;          // grid cols
+const GR   = 20;          // grid rows
+const TICK = 1000;
+
+// ══════════════════════════════════════════════════════════ DATA
+
+const RES = {
+  coal:        {n:"Coal",         abbr:"C",    c:"#909090", cat:0},
+  iron_ore:    {n:"Iron Ore",     abbr:"Fe",   c:"#c87858", cat:0},
+  copper_ore:  {n:"Copper Ore",   abbr:"Cu",   c:"#d87030", cat:0},
+  aluminum_ore:{n:"Aluminum",     abbr:"Al",   c:"#b8c8dc", cat:0},
+  silicon:     {n:"Silicon",      abbr:"Si",   c:"#8890c8", cat:0},
+  titanium_ore:{n:"Titanium Ore", abbr:"Ti",   c:"#78909c", cat:0},
+  oil:         {n:"Oil",          abbr:"Oil",  c:"#7878b0", cat:0},
+  iron:        {n:"Iron",         abbr:"Fe+",  c:"#b0c0d0", cat:1},
+  steel:       {n:"Steel",        abbr:"St",   c:"#50a0cc", cat:1},
+  copper:      {n:"Copper",       abbr:"Cu+",  c:"#d06020", cat:1},
+  aluminum:    {n:"Aluminum",     abbr:"Al+",  c:"#a0b8d0", cat:1},
+  wire:        {n:"Wire",         abbr:"Wi",   c:"#e0c020", cat:2},
+  gear:        {n:"Gear",         abbr:"Ge",   c:"#78a078", cat:2},
+  circuit:     {n:"Circuit",      abbr:"Ci",   c:"#28c050", cat:2},
+  plastic:     {n:"Plastic",      abbr:"Pl",   c:"#20c0c0", cat:2},
+  engine:      {n:"Engine",       abbr:"En",   c:"#e02828", cat:3},
+  computer:    {n:"Computer",     abbr:"Cm",   c:"#7830e0", cat:3},
+};
+
+const BLD = {
+  coal_mine:   {n:"Coal Mine",      ic:"⛏", col:"#2e2e20",dep:"coal",      cost:80,  pw:0,  t:0,pro:[{r:"coal",a:2}],       con:[]},
+  iron_mine:   {n:"Iron Mine",      ic:"⛏", col:"#4a2810",dep:"iron_ore",  cost:120, pw:0,  t:0,pro:[{r:"iron_ore",a:2}],   con:[]},
+  copper_mine: {n:"Copper Mine",    ic:"⛏", col:"#4e2c08",dep:"copper_ore",cost:120, pw:0,  t:0,pro:[{r:"copper_ore",a:2}], con:[]},
+  al_mine:     {n:"Aluminum Mine",  ic:"⛏", col:"#304050",dep:"aluminum_ore",cost:150,pw:0, t:0,pro:[{r:"aluminum_ore",a:2}],con:[]},
+  si_extractor:{n:"Si Extractor",   ic:"💎", col:"#28305c",dep:"silicon",   cost:180, pw:0,  t:0,pro:[{r:"silicon",a:1}],    con:[]},
+  ti_mine:     {n:"Titanium Mine",  ic:"⛏", col:"#283848",dep:"titanium_ore",cost:220,pw:0, t:0,pro:[{r:"titanium_ore",a:1}],con:[]},
+  oil_pump:    {n:"Oil Pump",       ic:"🛢", col:"#18203c",dep:"oil",       cost:260, pw:0,  t:0,pro:[{r:"oil",a:1}],        con:[]},
+  power_plant: {n:"Power Plant",    ic:"⚡", col:"#0e2030",dep:null,        cost:380, pw:+20,t:0,pro:[],                     con:[{r:"coal",a:3}]},
+  iron_smelter:{n:"Iron Smelter",   ic:"🔥", col:"#3c1808",dep:null,        cost:300, pw:-3, t:1,pro:[{r:"iron",a:2}],       con:[{r:"iron_ore",a:3},{r:"coal",a:1}]},
+  copper_smelt:{n:"Copper Smelter", ic:"🔥", col:"#4a2008",dep:null,        cost:300, pw:-3, t:1,pro:[{r:"copper",a:2}],     con:[{r:"copper_ore",a:3},{r:"coal",a:1}]},
+  al_smelter:  {n:"Al Smelter",     ic:"🔥", col:"#284058",dep:null,        cost:400, pw:-4, t:1,pro:[{r:"aluminum",a:2}],   con:[{r:"aluminum_ore",a:3},{r:"coal",a:1}]},
+  steel_mill:  {n:"Steel Mill",     ic:"🏭", col:"#102038",dep:null,        cost:620, pw:-5, t:1,pro:[{r:"steel",a:1}],      con:[{r:"iron",a:3},{r:"coal",a:2}]},
+  wire_mill:   {n:"Wire Mill",      ic:"〰", col:"#3a2e00",dep:null,        cost:460, pw:-2, t:1,pro:[{r:"wire",a:3}],       con:[{r:"copper",a:2}]},
+  gear_shop:   {n:"Gear Workshop",  ic:"⚙",  col:"#1c3020",dep:null,        cost:520, pw:-3, t:1,pro:[{r:"gear",a:2}],       con:[{r:"steel",a:3}]},
+  oil_refinery:{n:"Oil Refinery",   ic:"🏗", col:"#0e2820",dep:null,        cost:1200,pw:-4, t:2,pro:[{r:"plastic",a:2}],    con:[{r:"oil",a:2}],         req:"petro"},
+  circuit_fab: {n:"Circuit Fab",    ic:"🔌", col:"#082418",dep:null,        cost:1600,pw:-5, t:2,pro:[{r:"circuit",a:1}],    con:[{r:"wire",a:4},{r:"silicon",a:2}],req:"elec"},
+  engine_plant:{n:"Engine Plant",   ic:"🔴", col:"#280808",dep:null,        cost:2600,pw:-6, t:2,pro:[{r:"engine",a:1}],     con:[{r:"gear",a:4},{r:"steel",a:5}],  req:"mech"},
+  comp_fab:    {n:"Computer Fab",   ic:"💻", col:"#140a28",dep:null,        cost:4500,pw:-8, t:3,pro:[{r:"computer",a:1}],   con:[{r:"circuit",a:3},{r:"aluminum",a:2}],req:"comp"},
+};
+
+const SELL = {
+  coal:2,iron_ore:3,copper_ore:3,aluminum_ore:4,silicon:5,titanium_ore:8,oil:8,
+  iron:12,steel:38,copper:15,aluminum:22,wire:22,gear:45,circuit:130,plastic:35,engine:300,computer:500
+};
+
+const RSRCH = [
+  {id:"petro",n:"Petrochemicals",cost:2000,desc:"Unlocks Oil Refinery"},
+  {id:"elec", n:"Electronics",   cost:3000,desc:"Unlocks Circuit Fabricator"},
+  {id:"mech", n:"Mechanical Eng",cost:4000,desc:"Unlocks Engine Plant"},
+  {id:"comp", n:"Computing",     cost:8000,desc:"Unlocks Computer Fab",req:["elec"]},
+];
+
+// ══════════════════════════════════════════════════════════ DEPOSITS
+const DEP = {};
+function addDep(list,res){list.forEach(([c,r])=>DEP[c+','+r]=res);}
+
+// Coal clusters
+addDep([[3,1],[4,1],[5,1],[3,2],[4,2],[5,2],[4,3],[5,3]],'coal');
+addDep([[14,0],[15,0],[16,0],[15,1],[16,1],[15,2]],'coal');
+addDep([[25,4],[26,4],[25,5],[26,5],[27,5]],'coal');
+
+// Iron ore
+addDep([[9,4],[10,4],[11,4],[9,5],[10,5],[11,5]],'iron_ore');
+addDep([[22,3],[23,3],[22,4],[23,4],[24,3]],'iron_ore');
+
+// Copper ore
+addDep([[1,9],[2,9],[3,9],[2,10],[3,10]],'copper_ore');
+addDep([[18,10],[19,10],[18,11],[19,11],[20,11]],'copper_ore');
+
+// Aluminum
+addDep([[7,14],[8,14],[7,15],[8,15],[9,14]],'aluminum_ore');
+addDep([[24,13],[25,13],[25,14],[26,14]],'aluminum_ore');
+
+// Silicon
+addDep([[13,7],[14,7],[13,8],[14,8]],'silicon');
+addDep([[24,15],[25,15],[24,16]],'silicon');
+
+// Titanium
+addDep([[11,17],[12,17],[11,18],[12,18]],'titanium_ore');
+addDep([[28,11],[29,11],[28,12]],'titanium_ore');
+
+// Oil
+addDep([[20,17],[21,17],[20,18],[21,18]],'oil');
+addDep([[3,18],[4,18],[4,19],[3,19]],'oil');
+
+// ══════════════════════════════════════════════════════════ STATE
+let G = {
+  money:1000,
+  res:Object.fromEntries(Object.keys(RES).map(r=>[r,0])),
+  grid:{},
+  power:{gen:0,con:0},
+  research:[],
+  tick:0,
+  totalEarned:0,
+};
+let placing=null, selected=null, activeTab='build';
+let gameLog=[], particles=[];
+let camX=0,camY=0,isDrag=false,mdPos=null,hov=null,animT=0;
+
+// ══════════════════════════════════════════════════════════ HEX MATH
+function hxy(col,row){
+  return {
+    x: HS*S3*(col+(row&1)*0.5)+HS*1.2,
+    y: HS*1.5*row+HS*1.2
+  };
+}
+function px2hex(px,py){
+  const r=Math.round((py-HS*1.2)/(HS*1.5));
+  const c=Math.round((px-HS*1.2)/(HS*S3)-(r&1)*0.5);
+  // refine by checking neighbors
+  let bc=-1,br=-1,bd=Infinity;
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    const nc=c+dc,nr=r+dr;
+    if(nc<0||nc>=GC||nr<0||nr>=GR)continue;
+    const {x,y}=hxy(nc,nr);
+    const d=Math.hypot(px-x,py-y);
+    if(d<bd){bd=d;bc=nc;br=nr;}
+  }
+  return{c:bc,r:br};
+}
+function hexPoly(ctx,cx,cy,size){
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const a=Math.PI/180*(60*i-30);
+    const x=cx+size*Math.cos(a),y=cy+size*Math.sin(a);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+}
+
+// ══════════════════════════════════════════════════════════ CANVAS
+const canvas=document.getElementById('cv');
+const ctx=canvas.getContext('2d');
+const cwrap=document.getElementById('cwrap');
+function resize(){
+  canvas.width=cwrap.clientWidth;
+  canvas.height=cwrap.clientHeight;
+}
+resize();
+window.addEventListener('resize',resize);
+
+// Camera center on init
+(function centerCam(){
+  const mapW=GC*HS*S3+HS*2, mapH=GR*HS*1.5+HS*2;
+  camX=Math.max(0,(cwrap.clientWidth-mapW)/2);
+  camY=Math.max(0,(cwrap.clientHeight-mapH)/2);
+})();
+
+// ══════════════════════════════════════════════════════════ INPUT
+cwrap.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;
+  mdPos={x:e.clientX,y:e.clientY,cx:camX,cy:camY};
+  isDrag=false;
+});
+cwrap.addEventListener('mousemove',e=>{
+  if(mdPos){
+    const dx=e.clientX-mdPos.x,dy=e.clientY-mdPos.y;
+    if(Math.abs(dx)>5||Math.abs(dy)>5){isDrag=true;camX=mdPos.cx+dx;camY=mdPos.cy+dy;}
+  }
+  // hover
+  const rect=canvas.getBoundingClientRect();
+  const px=(e.clientX-rect.left-camX), py=(e.clientY-rect.top-camY);
+  const h=px2hex(px,py);
+  hov=(h.c>=0&&h.c<GC&&h.r>=0&&h.r<GR)?h:null;
+});
+cwrap.addEventListener('mouseup',e=>{
+  if(!isDrag&&mdPos){
+    const rect=canvas.getBoundingClientRect();
+    const px=(e.clientX-rect.left-camX),py=(e.clientY-rect.top-camY);
+    const{c,r}=px2hex(px,py);
+    if(c>=0&&c<GC&&r>=0&&r<GR)clickHex(c,r);
+  }
+  mdPos=null;isDrag=false;
+});
+cwrap.addEventListener('mouseleave',()=>{mdPos=null;hov=null;});
+cwrap.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){cancelPlace();selected=null;updateUI();}
+});
+
+// ══════════════════════════════════════════════════════════ RENDER
+const DEP_HEX_COL={
+  coal:'#181a12',iron_ore:'#1c1208',copper_ore:'#1e1408',
+  aluminum_ore:'#141e28',silicon:'#101828',titanium_ore:'#121c22',oil:'#101228',
+};
+const DEP_TXT_COL={
+  coal:'rgba(200,200,170,.9)',iron_ore:'rgba(220,150,90,.9)',copper_ore:'rgba(230,140,70,.9)',
+  aluminum_ore:'rgba(190,210,230,.9)',silicon:'rgba(140,148,220,.9)',titanium_ore:'rgba(150,185,205,.9)',oil:'rgba(140,140,210,.9)',
+};
+
+function rgb(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return[r,g,b];
+}
+
+function render(t){
+  animT=t;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(camX,camY);
+
+  const pw=G.power,powered=pw.gen>=pw.con;
+
+  for(let row=0;row<GR;row++){
+    for(let col=0;col<GC;col++){
+      const{x,y}=hxy(col,row);
+      if(x+camX<-HS*3||x+camX>canvas.width+HS*3)continue;
+      if(y+camY<-HS*3||y+camY>canvas.height+HS*3)continue;
+
+      const key=col+','+row;
+      const dep=DEP[key];
+      const cell=G.grid[key];
+      const b=cell?BLD[cell.id]:null;
+      const lv=cell?(cell.lv||1):1;
+
+      // subtle per-hex variation
+      const v=(Math.sin(col*1.3+row*0.7)*3)|0;
+
+      // base fill
+      const baseFill=dep?DEP_HEX_COL[dep]:cell?'#0a1420':`hsl(212,38%,${9+v}%)`;
+      hexPoly(ctx,x,y,HS-1);
+      ctx.fillStyle=baseFill;
+      ctx.fill();
+
+      // border
+      hexPoly(ctx,x,y,HS-1);
+      ctx.strokeStyle=dep?'rgba(200,180,80,.14)':cell?'rgba(60,120,200,.2)':'rgba(255,255,255,.04)';
+      ctx.lineWidth=0.8;
+      ctx.stroke();
+
+      // deposit label
+      if(dep&&!cell){
+        const abbr=RES[dep].abbr;
+        ctx.fillStyle=DEP_TXT_COL[dep];
+        ctx.font=`bold ${abbr.length>2?8:10}px monospace`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(abbr,x,y);
+        // subtle ore dots
+        ctx.fillStyle=DEP_TXT_COL[dep].replace('.9)',',.35)');
+        for(let i=0;i<3;i++){
+          const ox=Math.sin(col*5+i*2.1)*5,oy=Math.cos(row*4+i*1.7)*4;
+          ctx.beginPath();ctx.arc(x+ox,y+oy+7,1.2,0,6.28);ctx.fill();
+        }
+      }
+
+      // building
+      if(cell&&b){
+        const isActive=b.pw>0||powered;
+        const pls=(Math.sin(animT*.0025+col*.8+row*.5)+1)*.5;
+        const rad=HS*.62;
+
+        // shadow
+        ctx.beginPath();ctx.arc(x+1.5,y+2,rad,0,6.28);
+        ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();
+
+        // circle body
+        ctx.beginPath();ctx.arc(x,y,rad,0,6.28);
+        const[rr,rg,rb]=rgb(b.col);
+        const grd=ctx.createRadialGradient(x-rad*.3,y-rad*.3,rad*.1,x,y,rad);
+        grd.addColorStop(0,`rgba(${rr+30},${rg+30},${rb+30},1)`);
+        grd.addColorStop(1,`rgba(${rr},${rg},${rb},1)`);
+        ctx.fillStyle=grd;ctx.fill();
+
+        // ring
+        ctx.beginPath();ctx.arc(x,y,rad,0,6.28);
+        ctx.strokeStyle=isActive?`rgba(80,180,255,${.2+pls*.25})`:`rgba(255,50,50,.2)`;
+        ctx.lineWidth=1.5;ctx.stroke();
+
+        // glow
+        if(isActive){
+          ctx.beginPath();ctx.arc(x,y,rad+2.5,0,6.28);
+          ctx.strokeStyle=`rgba(60,160,255,${.06+pls*.08})`;
+          ctx.lineWidth=3;ctx.stroke();
+        }
+
+        // icon
+        ctx.font=`${Math.floor(HS*.58)}px serif`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(b.ic,x,y);
+
+        // active indicator dot
+        ctx.beginPath();ctx.arc(x-rad*.65,y-rad*.65,2.8,0,6.28);
+        ctx.fillStyle=isActive?'#28e060':'#e02828';ctx.fill();
+
+        // output badge
+        if(b.pro.length>0){
+          const prod=b.pro[0].a*lv;
+          ctx.fillStyle='rgba(0,0,0,.65)';
+          ctx.beginPath();ctx.roundRect(x+rad*.2,y-rad-.1,16,11,3);ctx.fill();
+          ctx.fillStyle=isActive?'#a0f0b0':'#f09090';
+          ctx.font='bold 7px monospace';
+          ctx.textAlign='center';ctx.textBaseline='middle';
+          ctx.fillText(prod,x+rad*.2+8,y-rad+5);
+        }
+
+        // level badge
+        if(lv>1){
+          ctx.fillStyle='rgba(0,0,0,.7)';
+          ctx.beginPath();ctx.roundRect(x-rad-.1,y-rad-.1,13,11,3);ctx.fill();
+          ctx.fillStyle='#f0c040';
+          ctx.font='bold 7px monospace';
+          ctx.textAlign='center';ctx.textBaseline='middle';
+          ctx.fillText('L'+lv,x-rad+6.5,y-rad+5);
+        }
+      }
+
+      // hover highlight (place mode)
+      if(placing&&hov&&hov.c===col&&hov.r===row){
+        const pb=BLD[placing];
+        const ok=!cell&&(pb.dep?dep===pb.dep:!dep);
+        hexPoly(ctx,x,y,HS-1);
+        if(ok){ctx.fillStyle='rgba(60,220,40,.15)';ctx.fill();ctx.strokeStyle='#40d830';ctx.lineWidth=1.5;ctx.stroke();}
+        else{ctx.fillStyle='rgba(220,40,40,.1)';ctx.fill();}
+      }
+
+      // place highlight (all valid)
+      if(placing){
+        const pb=BLD[placing];
+        const ok=!cell&&(pb.dep?dep===pb.dep:!dep);
+        if(ok&&!(hov&&hov.c===col&&hov.r===row)){
+          hexPoly(ctx,x,y,HS-1);
+          ctx.fillStyle='rgba(50,200,30,.07)';ctx.fill();
+          ctx.strokeStyle='rgba(50,200,30,.35)';ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+
+      // selection
+      if(selected===key){
+        const pulse=(Math.sin(animT*.004)+1)*.5;
+        hexPoly(ctx,x,y,HS-1);
+        ctx.strokeStyle=`rgba(240,192,60,${.55+pulse*.35})`;
+        ctx.lineWidth=2.2;ctx.stroke();
+        ctx.fillStyle=`rgba(240,192,60,${.06+pulse*.04})`;ctx.fill();
+      }
+    }
+  }
+
+  // particles (world space)
+  particles.forEach(p=>{
+    const a=(p.life/p.max)*.85;
+    const[rr,rg,rb]=rgb(p.color);
+    ctx.beginPath();ctx.arc(p.x,p.y,1.8,0,6.28);
+    ctx.fillStyle=`rgba(${rr},${rg},${rb},${a})`;ctx.fill();
+    p.x+=p.vx;p.y+=p.vy;p.vy*=.97;p.vx*=.98;p.life--;
+  });
+  particles=particles.filter(p=>p.life>0);
+
+  ctx.restore();
+  requestAnimationFrame(render);
+}
+
+// ══════════════════════════════════════════════════════════ GAME LOGIC
+function calcPow(){
+  let gen=0,con=0;
+  Object.values(G.grid).forEach(c=>{
+    const b=BLD[c.id];if(!b)return;
+    const lv=c.lv||1;
+    if(b.pw>0)gen+=b.pw*lv;else con+=Math.abs(b.pw)*lv;
+  });
+  return{gen,con};
+}
+function calcRates(){
+  const r=Object.fromEntries(Object.keys(RES).map(k=>[k,0]));
+  Object.values(G.grid).forEach(c=>{
+    const b=BLD[c.id];if(!b)return;
+    const lv=c.lv||1;
+    b.pro.forEach(p=>r[p.r]+=p.a*lv);
+    b.con.forEach(p=>r[p.r]-=p.a*lv);
+  });
+  return r;
+}
+function bldCost(id){
+  return Math.floor(BLD[id].cost*Math.pow(1.15,Object.values(G.grid).filter(c=>c.id===id).length));
+}
+
+function gameTick(){
+  const pw=calcPow();G.power=pw;
+  const powered=pw.gen>=pw.con;
+  Object.entries(G.grid).forEach(([key,c])=>{
+    const b=BLD[c.id];if(!b)return;
+    const lv=c.lv||1;
+    if(b.pw<=0&&!powered)return;
+    if(b.con.every(x=>(G.res[x.r]||0)>=x.a*lv)){
+      b.con.forEach(x=>G.res[x.r]-=x.a*lv);
+      b.pro.forEach(x=>{
+        G.res[x.r]=(G.res[x.r]||0)+x.a*lv;
+        const[gc,gr]=key.split(',').map(Number);
+        for(let i=0;i<Math.min(x.a*lv,5);i++)spawnPart(gc,gr,RES[x.r].c);
+      });
+    }
+  });
+  G.tick++;
+  updateUI();
+}
+
+function spawnPart(col,row,color){
+  const{x,y}=hxy(col,row);
+  particles.push({
+    x:x+(Math.random()-.5)*10,y:y+(Math.random()-.5)*10,
+    vx:(Math.random()-.5)*.5,vy:-(0.3+Math.random()*.9),
+    color,life:65,max:65
+  });
+}
+
+// ══════════════════════════════════════════════════════════ INTERACTIONS
+function clickHex(c,r){
+  const key=c+','+r,dep=DEP[key];
+  if(placing){
+    const pb=BLD[placing];
+    if(G.grid[key]){addLog('⚠ Cell occupied');return;}
+    if(pb.dep&&dep!==pb.dep){addLog('⚠ '+pb.n+' must be on '+RES[pb.dep]?.abbr+' deposit');return;}
+    if(!pb.dep&&dep){addLog('⚠ Processing buildings go on empty tiles');return;}
+    const cost=bldCost(placing);
+    if(G.money<cost){addLog('⚠ Need $'+fmt(cost));return;}
+    G.grid[key]={id:placing,lv:1};G.money-=cost;
+    addLog('✓ Built '+pb.n+' at ('+c+','+r+')');
+    updateUI();return;
+  }
+  if(G.grid[key]){
+    selected=selected===key?null:key;
+    if(selected&&activeTab!=='build')setTab('build');
+  }else{
+    selected=null;
+  }
+  updateUI();
+}
+
+function startPlacing(id){
+  placing=placing===id?null:id;selected=null;
+  const tip=document.getElementById('ptip');
+  if(placing){tip.style.display='block';document.getElementById('pname').textContent=BLD[placing].n;}
+  else tip.style.display='none';
+  renderBuild();
+}
+function cancelPlace(){
+  placing=null;document.getElementById('ptip').style.display='none';
+  if(activeTab==='build')renderBuild();
+}
+
+function upgBld(key){
+  const c=G.grid[key];if(!c)return;
+  const lv=c.lv||1,cost=Math.floor(BLD[c.id].cost*lv*2);
+  if(G.money<cost){addLog('⚠ Need $'+fmt(cost));return;}
+  G.grid[key]={...c,lv:lv+1};G.money-=cost;
+  addLog('⬆ '+BLD[c.id].n+' → Lv.'+(lv+1));updateUI();
+}
+function demBld(key){
+  const c=G.grid[key];if(!c)return;
+  const n=Object.values(G.grid).filter(x=>x.id===c.id).length;
+  const ref=Math.floor(BLD[c.id].cost*Math.pow(1.15,n-1)*.5);
+  delete G.grid[key];G.money+=ref;selected=null;
+  addLog('↩ Demolished '+BLD[c.id].n+' — refunded $'+fmt(ref));updateUI();
+}
+function clearSel(){selected=null;updateUI();}
+
+function sellRes(r){
+  const amt=Math.floor(G.res[r]||0);if(!amt)return;
+  const inc=Math.floor(amt*(SELL[r]||0));
+  G.res[r]=0;G.money+=inc;G.totalEarned+=inc;
+  addLog('💰 Sold '+fmt(amt)+' '+RES[r].n+' → $'+fmt(inc));updateUI();
+}
+function sellAll(){
+  let tot=0;
+  Object.keys(RES).forEach(r=>{tot+=Math.floor((G.res[r]||0)*(SELL[r]||0));G.res[r]=0;});
+  G.money+=tot;G.totalEarned+=tot;
+  addLog('💰 Sold all → $'+fmt(tot));updateUI();
+}
+function doResearch(id){
+  const rt=RSRCH.find(r=>r.id===id);if(!rt)return;
+  if(G.money<rt.cost){addLog('⚠ Need $'+fmt(rt.cost));return;}
+  if(rt.req&&rt.req.some(r=>!G.research.includes(r))){addLog('⚠ Prerequisites missing');return;}
+  G.money-=rt.cost;G.research.push(id);
+  addLog('🔬 Researched: '+rt.n);updateUI();
+}
+
+function addLog(msg){
+  gameLog.unshift({id:Date.now()+Math.random(),msg});
+  gameLog=gameLog.slice(0,50);
+  if(activeTab==='log')renderLog();
+}
+
+// ══════════════════════════════════════════════════════════ UI
+const fmt=n=>n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':Math.floor(n)+'';
+const fmtR=n=>Math.abs(n)<.05?'':(n>0?'+':'')+n.toFixed(1)+'/s';
+
+function updateUI(){updateTicker();if(activeTab==='build')updateBuildTab();else if(activeTab==='market')renderMarket();else if(activeTab==='research')renderResearch();}
+
+function updateTicker(){
+  document.getElementById('tmoney').textContent='$'+fmt(G.money);
+  const pw=G.power,pe=document.getElementById('tpower');
+  pe.textContent=pw.gen+'/'+pw.con+' MW';
+  pe.style.color=pw.gen>=pw.con?'#38a0d8':'#f04040';
+  const rates=calcRates();
+  const active=Object.entries(RES).filter(([r])=>(G.res[r]||0)>0||(rates[r]||0)!==0);
+  document.getElementById('tscroll').innerHTML=active.map(([r,rv])=>{
+    const rt=rates[r]||0;
+    const rs=rt!==0?` <span class="trate ${rt>0?'rpos':'rneg'}">${fmtR(rt)}</span>`:'';
+    return`<div class="tres"><span class="tabr" style="color:${rv.c}">${rv.abbr}</span><span class="tamt">${fmt(G.res[r]||0)}</span>${rs}</div>`;
+  }).join('');
+}
+
+function setTab(t){
+  activeTab=t;
+  if(t!=='build')selected=null;
+  ['build','market','research','log'].forEach(id=>{
+    document.getElementById('p-'+id).style.display=id===t?'block':'none';
+    document.getElementById('tb-'+id).classList.toggle('on',id===t);
+  });
+  updateUI();
+  if(t==='log')renderLog();
+}
+
+function updateBuildTab(){
+  const selCell=selected?G.grid[selected]:null;
+  const selB=selCell?BLD[selCell.id]:null;
+  if(selCell&&selB&&!placing)renderSelected(selected,selCell,selB);
+  else renderBuild();
+}
+
+const TIER_N=['EXTRACTION','PROCESSING','ADVANCED','HIGH-TECH'];
+function renderBuild(){
+  let h='';
+  [0,1,2,3].forEach(t=>{
+    h+=`<div class="th">${TIER_N[t]}</div>`;
+    Object.entries(BLD).filter(([,b])=>b.t===t).forEach(([id,b])=>{
+      const locked=b.req&&!G.research.includes(b.req);
+      const cost=bldCost(id),canA=G.money>=cost,act=placing===id;
+      h+=`<div class="bitem ${locked?'locked':''} ${act?'active':''}" onclick="${locked?'':'startPlacing(\''+id+'\')'}">
+        <div class="bh">
+          <div class="bico" style="background:${b.col}">${b.ic}</div>
+          <span class="bname">${b.n}</span>
+          ${locked?'<span class="block-ico">🔒</span>':''}
+        </div>
+        <div class="bcost" style="color:${locked?'#303848':canA?'#d0b020':'#604018'}">${locked?'Locked':'$'+fmt(cost)}</div>
+        <div class="bprod">${b.pro.map(p=>'+'+p.a+' '+RES[p.r].n).join(' ')}${b.pw?` ${b.pw>0?'+':''}${b.pw}MW`:''}</div>
+      </div>`;
+    });
+  });
+  document.getElementById('p-build').innerHTML=h;
+}
+
+function renderSelected(key,cell,b){
+  const lv=cell.lv||1,pw=G.power,active=b.pw>0||pw.gen>=pw.con,upgC=Math.floor(b.cost*lv*2);
+  let h=`<div class="shdr">
+    <div class="sico" style="background:${b.col}">${b.ic}</div>
+    <div class="sname">${b.n}</div>
+    <button class="scls" onclick="clearSel()">✕</button>
+  </div>`;
+  h+=`<div class="irow"><span class="il">Level</span><span class="iv" style="color:#f0c040">Lv.${lv}</span></div>`;
+  h+=`<div class="irow"><span class="il">Status</span><span class="iv" style="color:${active?'#28d060':'#f03838'}">${active?'Working':'Idle — no power'}</span></div>`;
+  h+=`<div class="irow"><span class="il">Power</span><span class="iv" style="color:${b.pw<0?'#e04040':'#30d870'}">${b.pw>0?'+':''}${b.pw*lv} MW</span></div>`;
+  b.pro.forEach(p=>h+=`<div class="irow"><span class="il" style="color:#284828">Produces</span><span class="iv" style="color:${RES[p.r].c}">+${p.a*lv}/s ${RES[p.r].n}</span></div>`);
+  b.con.forEach(p=>h+=`<div class="irow"><span class="il" style="color:#482828">Consumes</span><span class="iv" style="color:#b03030">−${p.a*lv}/s ${RES[p.r].n}</span></div>`);
+  h+=`<button class="sbtn upgbtn" onclick="upgBld('${key}')">⬆ Upgrade to Lv.${lv+1} — $${fmt(upgC)}</button>`;
+  h+=`<button class="sbtn dembtn" onclick="demBld('${key}')">↩ Demolish (50% refund)</button>`;
+  document.getElementById('p-build').innerHTML=h;
+}
+
+function renderMarket(){
+  let h='<div class="ph">SELL RESOURCES</div>';
+  Object.entries(RES).forEach(([r,rv])=>{
+    const amt=G.res[r]||0;
+    h+=`<div class="mrow">
+      <div class="mdot" style="background:${rv.c}"></div>
+      <span class="mname">${rv.n}</span>
+      <span class="mamt">${fmt(amt)}</span>
+      <span class="mprc">$${SELL[r]}/ea</span>
+      <button class="mbtn" ${amt<1?'disabled':''} onclick="sellRes('${r}')">Sell</button>
+    </div>`;
+  });
+  h+=`<button class="sellall" onclick="sellAll()">💰 SELL ALL RESOURCES</button>`;
+  document.getElementById('p-market').innerHTML=h;
+}
+
+function renderResearch(){
+  let h='<div class="ph">RESEARCH & DEVELOPMENT</div>';
+  RSRCH.forEach(rt=>{
+    const done=G.research.includes(rt.id),locked=rt.req&&rt.req.some(r=>!G.research.includes(r)),canA=G.money>=rt.cost;
+    h+=`<div class="rcard ${done?'done':''} ${locked?'locked':''}">
+      <div class="rcn">${rt.n}</div>
+      <div class="rcd">${rt.desc}</div>
+      ${done?'<div class="rdone">✓ Researched</div>':`<button class="rbtn" ${locked||!canA?'disabled':''} onclick="doResearch('${rt.id}')">$${fmt(rt.cost)}</button>`}
+    </div>`;
+  });
+  document.getElementById('p-research').innerHTML=h;
+}
+
+function renderLog(){
+  let h='<div class="ph">EVENT LOG</div>';
+  h+=gameLog.length?gameLog.map(l=>`<div class="lentry">${l.msg}</div>`).join(''):'<div class="lempty">No events yet. Start building!</div>';
+  document.getElementById('p-log').innerHTML=h;
+}
+
+// ══════════════════════════════════════════════════════════ INIT
+setInterval(gameTick,TICK);
+requestAnimationFrame(render);
+updateUI();
+addLog('Welcome! Build Coal Mines on C deposits → Power Plant on empty tiles → processing buildings need power.');
+addLog('Tip: Pan the map by clicking and dragging. Press ESC to cancel placement.');
+</script>
+</body>
+</html>
